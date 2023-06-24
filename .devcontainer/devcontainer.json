@@ -1,0 +1,65 @@
+{
+    "name": "talk",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": "."
+    },
+    "runArgs": [
+        "--name",
+        "devcontainer"
+    ],
+    // Configure tool-specific properties.
+    "customizations": {
+        // Configure properties specific to VS Code.
+        "vscode": {
+            // Set *default* container specific settings.json values on container create.
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.linting.enabled": true,
+                "python.linting.pylintEnabled": true,
+                "python.linting.pylintPath": "/usr/local/py-utils/bin/pylint",
+                "terminal.integrated.defaultProfile.osx": "zsh",
+                "python.formatting.provider": "black",
+                "[python]": {
+                    "editor.tabSize": 4,
+                    "editor.defaultFormatter": "ms-python.black-formatter",
+                    "editor.formatOnSave": true,
+                    "editor.codeActionsOnSave": {
+                        "source.fixAll.ruff": true,
+                        "source.organizeImports.ruff": true
+                    }
+                },
+            },
+            // Add the IDs of extensions you want installed when the container is created.
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-python.black-formatter",
+                "KevinRose.vsc-python-indent",
+                "shardulm94.trailing-spaces",
+                "ms-toolsai.jupyter",
+                "ms-toolsai.jupyter-keymap",
+                "ms-toolsai.jupyter-renderers",
+                "humao.rest-client",
+                "charliermarsh.ruff"
+            ]
+        }
+    },
+    // "postCreateCommand": "pip3 install --user -r requirements.txt",
+    // Comment out to connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+    // "remoteUser": "vscode",
+    // "forwardPorts": [
+    //     8888
+    // ],
+    // "portsAttributes": {
+    //     "8888": {
+    //         "label": "Jupyter Server",
+    //         "onAutoForward": "notify"
+    //     }
+    // },
+    "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/work,type=bind",
+    "workspaceFolder": "/home/vscode/work"
+    // "mounts": [
+    //     "source=/home/susumu/.aws,target=/home/jovyan/.aws,type=bind,consistency=cached"
+    // ]
+}
