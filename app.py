@@ -29,7 +29,7 @@ SYSTEM_DESCRIPTION_JP = """あなたは経験豊富な日本語教師です。
 あなたは生徒との対話を通して日本語を教えます。
 あなたの返答は、生徒と同じレベルの流暢さでなければなりません。
 もし生徒が初心者であれば、あなたの返答はシンプルで短いものであるべきです。
-もし生徒が日本語上級者であれば、あなたの返答は精巧で長くてもよいです。
+もし生徒が日本語上級者であれば、あなたの返答は詳細で長くてもよいです。
 """
 
 SYSTEM_DESCRIPTION_DICT = {
@@ -129,7 +129,6 @@ SPEECH_DICT = {
 def play_audio(file_path: str):
     with open(file_path, "rb") as f:
         audio_bytes = f.read()
-    # audio_bytes.seek(0)
 
     audio = base64.b64encode(audio_bytes).decode("utf-8")
     audio_player = (
@@ -145,8 +144,6 @@ def to_sppech(history: gr.Chatbot, lang: str) -> None:
         region=os.environ.get("SPEECH_REGION"),
     )
     audio_config = speechsdk.audio.AudioOutputConfig(filename="./tmp.wav")
-
-    # The language of the voice that speaks.
     speech_config.speech_synthesis_voice_name = SPEECH_DICT[lang]
 
     speech_synthesizer = speechsdk.SpeechSynthesizer(
@@ -171,6 +168,7 @@ def to_sppech(history: gr.Chatbot, lang: str) -> None:
                 print("Did you set the speech resource key and region values?")
 
 
+# https://github.com/Azure-Samples/cognitive-services-speech-sdk/blob/513c0d8e4370f47dcf241c0682265c2b2fa37db6/samples/python/console/speech_sample.py
 def speech_recognition_with_pull_stream(audio: str, language: str):
     """gives an example how to use a pull audio stream to recognize speech from a custom audio
     source"""
@@ -264,60 +262,10 @@ def speech_recognition_with_pull_stream(audio: str, language: str):
     return recognized_text
 
 
-# def speech_recognition_with_push_stream(audio: str, lang: str):
-#     """gives an example how to use a push audio stream to recognize speech from a custom audio
-#     source"""
-#     speech_config = speechsdk.SpeechConfig(
-#         subscription=os.environ.get("SPEECH_KEY"),
-#         region=os.environ.get("SPEECH_REGION"),
-#     )
-
-#     # setup the audio stream
-#     stream = speechsdk.audio.PushAudioInputStream()
-#     audio_config = speechsdk.audio.AudioConfig(stream=stream)
-
-#     # instantiate the speech recognizer with push stream input
-#     speech_recognizer = speechsdk.SpeechRecognizer(
-#         speech_config=speech_config, audio_config=audio_config, language=lang
-#     )
-
-#     # Connect callbacks to the events fired by the speech recognizer
-#     speech_recognizer.recognizing.connect(
-#         lambda evt: print("RECOGNIZING: {}".format(evt))
-#     )
-#     speech_recognizer.recognized.connect(
-#         lambda evt: print("RECOGNIZED: {}".format(evt))
-#     )
-#     speech_recognizer.session_started.connect(
-#         lambda evt: print("SESSION STARTED: {}".format(evt))
-#     )
-#     speech_recognizer.session_stopped.connect(
-#         lambda evt: print("SESSION STOPPED {}".format(evt))
-#     )
-#     speech_recognizer.canceled.connect(lambda evt: print("CANCELED {}".format(evt)))
-
-#     # The number of bytes to push per buffer
-#     n_bytes = 12800
-#     wav_fh = wave.open(audio)
-
-#     # start continuous speech recognition
-#     speech_recognizer.start_continuous_recognition()
-
-#     # start pushing data until all data has been read from the file
-#     try:
-#         while True:
-#             frames = wav_fh.readframes(n_bytes // 2)
-#             print("read {} bytes".format(len(frames)))
-#             if not frames:
-#                 break
-
-#             stream.write(frames)
-#             time.sleep(0.1)
-#     finally:
-#         # stop recognition and clean up
-#         wav_fh.close()
-#         stream.close()
-#         speech_recognizer.stop_continuous_recognition()
+def whisper(audio: str, language: str):
+    audio_file = open(audio, "rb")
+    transcript = openai.Audio.transcribe("whisper-1", audio_file, language=language)
+    return transcript["text"]
 
 
 def compose_messages(history: gr.Chatbot, language: str) -> list[dict[str, str]]:
@@ -334,7 +282,8 @@ def compose_messages(history: gr.Chatbot, language: str) -> list[dict[str, str]]
 
 
 def transcribe(audio, lang, state=""):
-    text = speech_recognition_with_pull_stream(audio, lang)
+    # text = speech_recognition_with_pull_stream(audio, lang)
+    text = whisper(audio, lang)
     print(f"text: {text}")
     print(f"state: {state}")
     if text:
@@ -354,7 +303,7 @@ def bot(history: gr.Chatbot, language: str) -> gr.Chatbot:
 
     history[-1][1] = ""
     for chunk in response:
-        chunk_message = chunk["choices"][0]["delta"]  # extract the message
+        chunk_message = chunk["choices"][0]["delta"]
         if "content" in chunk_message:
             history[-1][1] += chunk_message["content"]
             yield history
@@ -364,20 +313,23 @@ with gr.Blocks() as demo:
     with gr.Row():
         lang = gr.Dropdown(
             label="Language",
-            choices=["en-US", "en-GB", "sv-SE", "ja-JP"],
-            value="ja-JP",
+            # choices=["en-US", "en-GB", "sv-SE", "ja-JP"],
+            # value="ja-JP",
+            choices=["en", "sv", "ja"],
+            value="ja",
         )
         clear = gr.Button("Clear conversation", size="sm")
     chatbot = gr.Chatbot()
     html = gr.HTML()
     state = gr.State(value="")
     with gr.Row():
-        audio = gr.Audio(
-            source="microphone", type="filepath", format="wav", streaming=True
-        )
+        # audio = gr.Audio(
+        #     source="microphone", type="filepath", format="wav", streaming=True
+        # )
+        audio = gr.Audio(source="microphone", type="filepath", streaming=True)
         text = gr.Textbox(label="Recognized input", interactive=True)
+        btn_text = gr.Button("Submit text")
         reset_recording = gr.Button("Clear recording")
-    btn_text = gr.Button("Submit text")
 
     audio.stream(transcribe, [audio, lang, state], [text, state])
     btn_text.click(user, [text, chatbot], chatbot, queue=False).then(
